@@ -1,7 +1,10 @@
 const express = require('express');
+require('dotenv').config();
 const router = express.Router();
 const gravatar = require('gravatar');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const passport = require('passport');
 
 // Load User model
 const User = require('../models/User');
@@ -16,39 +19,40 @@ router.get('/', (req, res) => {
 // @route   GET api/users/register
 // @desc    Register a user
 // @access  Public
-router.post('/register', (req, res) => {
+router.post('/register', (req, res) => {  
     // see if email already exists
     User.findOne({ email: req.body.email })
-        .then(user => {
-            if(user) {
-                return res.status(400).json({ email: 'Email already exists'});
-            } else {
-                const avatar = gravatar.url({ email: req.body.email,
-                    s: '200',   // Size
-                    r: 'pg',    // Rating    
-                    d: 'mm'     // Default
-                });
+    .then(user => {
+        if(user) {
 
-                // create new user
-                const newUser = new User({
-                    name: req.body.name,
-                    email: req.body.email,
-                    password: req.body.password,
-                    avatar
-                });
+            return res.status(400).json({msg: 'Email already exists'});
+        } else {
+            const avatar = gravatar.url({ email: req.body.email,
+                s: '200',   // Size
+                r: 'pg',    // Rating    
+                d: 'mm'     // Default
+            });
 
-            // generate new password
-            bcrypt.genSalt(10, (err, salt) => {
-                bcrypt.hash(newUser.password, salt, (err, hash) => {
-                    if(err) throw err;
-                    newUser.password = hash;
-                    newUser.save()
-                    .then(user => res.json(user))
-                    .catch(err => console.log(err));
-                })
+            // create new user
+            const newUser = new User({
+                name: req.body.name,
+                email: req.body.email,
+                password: req.body.password,
+                avatar
+            });
+
+        // generate new password
+        bcrypt.genSalt(10, (err, salt) => {
+            bcrypt.hash(newUser.password, salt, (err, hash) => {
+                if(err) throw err;
+                newUser.password = hash;
+                newUser.save()
+                .then(user => res.json(user))
+                .catch(err => console.log(err));
             })
-        }
-    });
+        })
+    }
+});   
 });
 
 // @route   GET api/users/login
@@ -67,7 +71,19 @@ router.post('/login', (req, res) => {
         // Check Password
         bcrypt.compare(password, user.password).then(isMatch => {
             if (isMatch) {
-                res.json({ msg: 'Success' });
+                // User Matched
+                const payload = { id: user.id, name: user.name, avatar: user.avatar } // Create JWT payload
+
+                // Sign Token
+                jwt.sign(
+                    payload, 
+                    process.env.SECRET, 
+                    { expiresIn: 3600 }, (err, token) => {
+                        res.json({
+                            success: true,
+                            token: 'Bearer ' + token
+                        });
+                    }); // 3600 = 1hr
             } else {
                 return res.status(400).json({ password: 'Password Incorrect' });
             }
@@ -75,5 +91,15 @@ router.post('/login', (req, res) => {
     });
 });
 
+// @route   GET api/users/current
+// @desc    Return current user 
+// @access  Private
+router.get('/current', passport.authenticate('jwt', { session: false }), (req, res) => {
+    res.json({
+        id: req.user.id,
+        name: req.user.name,
+        email: req.user.email
+    });
+});
 
 module.exports = router;
