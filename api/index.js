@@ -4,6 +4,7 @@ if (process.env.NODE_ENV = 'production') {
 
 const express = require('express');
 const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
 
 const usersRoute = require('./routes/users');
 const profileRoute = require('./routes/profile');
@@ -11,6 +12,10 @@ const postsRoute = require('./routes/posts');
 
 // set up express app
 const app = express();
+
+// midddleware
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
 app.get('/', (req, res) => {
     res.send('Hello World')
