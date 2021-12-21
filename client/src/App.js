@@ -1,7 +1,14 @@
 import './App.css';
+import Footer from './components/layout/footer/Footer';
+import Landing from './components/layout/landing/Landing';
+import Navbar from './components/layout/navbar/Navbar';
 function App() {
   return (
-   <h1>React App</h1>
+    <>
+      <Navbar />
+      <Landing />
+      <Footer />
+    </>
   );
 }
 
